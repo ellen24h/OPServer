@@ -8,6 +8,7 @@ var mongoose = require('mongoose');
 var methodOverride = require('method-override');
 var ytdl = require('ytdl-core');
 var update = require('./update');
+var splaylist = mongoose.model('sPlaylist');
 
 // sentiment library 추가
 var sentiment = require('sentiment');
@@ -40,76 +41,27 @@ app.use(methodOverride(function (req, res) {
 }));
 
 
-// http request 받아서 sentiment value 반환하는 부분 
+// http request 받아서 sentiment value 반환하는 부분
 
-var ytdlOptions = {};
-ytdlOptions.quality = undefined;
-ytdlOptions.range = undefined;
-
-var filters = [];
-
-function createFilter(field, regexpStr, negated) {
-  try {
-    var regexp = new RegExp(regexpStr, 'i');
-  } catch (err) {
-    console.error(err.message);
-    process.exit(1);
-  }
-
-  filters.push(function(format) {
-    return negated !== regexp.test(format[field]);
-  });
-}
-
-
-ytdlOptions.filter = function(format) {
-  return filters.every(function(filter) {
-    return filter(format);
-  });
-};
 
 app.get('/sentiment', function(req, res){
   var sentence = req.query.sentence;
   var sentimentResult = sentiment(sentence);
   var sentimentValue = sentimentResult.score;
-  var urls = {
-    "p1": ["https://www.youtube.com/watch?v=hcGEsRqyipc&list=RDEM9E_ik5ScxhRL1c_HWNxA2A&index=22", "https://www.youtube.com/watch?v=iS1g8G_njx8&index=23&list=RDEM9E_ik5ScxhRL1c_HWNxA2A", "https://www.youtube.com/watch?v=IcrbM1l_BoI&list=RDEM9E_ik5ScxhRL1c_HWNxA2A&index=24"],
-    "p2": ["https://www.youtube.com/watch?v=CGyEd0aKWZE&list=RDEM9E_ik5ScxhRL1c_HWNxA2A&index=25", "https://www.youtube.com/watch?v=7PCkvCPvDXk&index=26&list=RDEM9E_ik5ScxhRL1c_HWNxA2A", "https://www.youtube.com/watch?v=y6Sxv-sUYtM&index=27&list=RDEM9E_ik5ScxhRL1c_HWNxA2A"]
-  };
 
   // url 변경하기 
   if (sentimentValue < 0) {
-
-    var playlist1 = [];
-
-    for (var i = 0 ; i < urls.p1.length ; i++) {
-      ytdl.getInfo(urls.p1[i], {
-        downloadURL: true,
-        debug: null
-      }, function(err, info) {
-        var coreUtil = require('ytdl-core/lib/util');
-        var format = coreUtil.chooseFormat(info.formats, ytdlOptions);
-        if (format instanceof Error) {
-          console.error(format.message);
-          process.exit(1);
-          return;
-        }
-        console.log(format.url);
-        playlist1.push(format.url);
-      });
-    }
-    setTimeout(function(){     
-      var result1 = {score: sentimentValue, playlist: playlist1};
-      res.json(result1); }, 5000);
+    splaylist.find({'playlistNumber': 14}, function(err, playlist) {
+      if (err) return res.status(500).send(err);
+      var result1 = {score: sentimentValue, playlist: playlist};
+      res.json(result1);
+    });
   } else {
-    var playlist2 = [];
-        for (url in urls.p2) {
-      playUrl = youtubedl(url, ['--format=18']);
-      console.log(playUrl);
-      playlist2.push(playUrl);
-    }
-    var result2 = {score: sentimentValue, playlist: playlist2};
-    res.json(result2);
+    splaylist.find({'playlistNumber': 9}, function(err, playlist) {
+      if (err) return res.status(500).send(err);
+      var result2 = {score: sentimentValue, playlist: playlist};
+      res.json(result2);
+    });
   }
 });
 
